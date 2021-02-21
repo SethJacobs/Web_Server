@@ -17,6 +17,10 @@
 #define FORBIDDEN 403
 #define NOTFOUND 404
 
+pthread_mutex_t the_mutex;
+pthread_cond_t condc, condp;
+int buffer = 0;
+
 struct
 {
 	char *ext;
@@ -150,14 +154,46 @@ void web(int fd, int hit)
 	exit(1);
 }
 
+void *producer(void *ptr) {
+	int i;
+	for (i= 1; i <= 16; i++) {
+		pthread_mutex_lock(&the_mutex); /* get exclusive access to buffer */
+		while (buffer != 0) pthread_cond_wait(&condp, &the_mutex);
+		buffer = i; /* put item in buffer */
+		pthread_cond_signal(&condc); /* wake up consumer */
+		pthread_mutex_unlock(&the_mutex); /* release access to buffer */
+	}
+	pthread_exit(0);
+}
+
+void *consumer(void *ptr) {
+	pthread_mutex_lock(&the_mutex); /* get exclusive access to buffer */
+	while (buffer == 0) pthread_cond_wait(&condc, &the_mutex);
+	buffer = 0; /* take item out of buffer */
+	pthread_cond_signal(&condp); /* wake up producer */
+	pthread_mutex_unlock(&the_mutex); /* release access to buffer */
+	pthread_exit(0);
+}
+
 int main(int argc, char **argv)
 {
+	pthread_t pro, con;
+	pthread_mutex_init(&the_mutex, 0);
+	pthread_cond_init(&condc, 0);
+	pthread_cond_init(&condp, 0);
+	pthread_create(&con, 0, consumer, 0);
+	pthread_create(&pro, 0, producer, 0);
+	pthread_join(pro, 0);
+	pthread_join(con, 0);
+	pthread_cond_destroy(&condc);
+	pthread_cond_destroy(&condp);
+	pthread_mutex_destroy(&the_mutex);
 	int i, port, pid, listenfd, socketfd, hit;
 	socklen_t length;
 	static struct sockaddr_in cli_addr;	 /* static = initialised to zeros */
 	static struct sockaddr_in serv_addr; /* static = initialised to zeros */
 
-	if (argc < 3 || argc > 3 || !strcmp(argv[1], "-?"))
+	if (argc < 5 || argc > 5 || !strcmp(argv[1], "-?"))
 	{
 		(void)printf("hint: nweb Port-Number Top-Directory\t\tversion %d\n\n"
 					 "\tnweb is a small and very safe mini web server\n"
@@ -188,6 +224,7 @@ int main(int argc, char **argv)
 		(void)printf("ERROR: Can't Change to directory %s\n", argv[2]);
 		exit(4);
 	}
+	producer(NULL);
 	/* Become deamon + unstopable and no zombies children (= no wait()) */
 	if (fork() != 0)
 		return 0;					/* parent returns OK to shell */
