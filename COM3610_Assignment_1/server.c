@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <pthread.h>
 #define VERSION 23
 #define BUFSIZE 8096
 #define ERROR 42
