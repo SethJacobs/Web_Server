@@ -45,11 +45,11 @@ void logger(int type, char *s1, char *s2, int socket_fd)
 		(void)sprintf(logbuffer, "ERROR: %s:%s Errno=%d exiting pid=%d", s1, s2, errno, getpid());
 		break;
 	case FORBIDDEN:
-		(void)write(socket_fd, "HTTP/1.1 403 Forbidden\nContent-Length: 185\nConnection: close\nContent-Type: text/html\n\n<html><head>\n<title>403 Forbidden</title>\n</head><body>\n<h1>Forbidden</h1>\nThe requested URL, file type or operation is not allowed on this simple static file webserver.\n</body></html>\n", 271);
+		if(write(socket_fd, "HTTP/1.1 403 Forbidden\nContent-Length: 185\nConnection: close\nContent-Type: text/html\n\n<html><head>\n<title>403 Forbidden</title>\n</head><body>\n<h1>Forbidden</h1>\nThe requested URL, file type or operation is not allowed on this simple static file webserver.\n</body></html>\n", 271)){};
 		(void)sprintf(logbuffer, "FORBIDDEN: %s:%s", s1, s2);
 		break;
 	case NOTFOUND:
-		(void)write(socket_fd, "HTTP/1.1 404 Not Found\nContent-Length: 136\nConnection: close\nContent-Type: text/html\n\n<html><head>\n<title>404 Not Found</title>\n</head><body>\n<h1>Not Found</h1>\nThe requested URL was not found on this server.\n</body></html>\n", 224);
+		if(write(socket_fd, "HTTP/1.1 404 Not Found\nContent-Length: 136\nConnection: close\nContent-Type: text/html\n\n<html><head>\n<title>404 Not Found</title>\n</head><body>\n<h1>Not Found</h1>\nThe requested URL was not found on this server.\n</body></html>\n", 224)){};
 		(void)sprintf(logbuffer, "NOT FOUND: %s:%s", s1, s2);
 		break;
 	case LOG:
@@ -59,8 +59,8 @@ void logger(int type, char *s1, char *s2, int socket_fd)
 	/* No checks here, nothing can be done with a failure anyway */
 	if ((fd = open("nweb.log", O_CREAT | O_WRONLY | O_APPEND, 0644)) >= 0)
 	{
-		(void)write(fd, logbuffer, strlen(logbuffer));
-		(void)write(fd, "\n", 1);
+		if(write(fd, logbuffer, strlen(logbuffer))){};
+		if(write(fd, "\n", 1)){};
 		(void)close(fd);
 	}
 	if (type == ERROR || type == NOTFOUND || type == FORBIDDEN)
@@ -128,11 +128,11 @@ void web(int fd, int hit)
 		logger(NOTFOUND, "failed to open file", &buffer[5], fd);
 	}
 	logger(LOG, "SEND", &buffer[5], hit);
-	len = (long)lseek(file_fd, (off_t)0, SEEK_END);																								   /* lseek to the file end to find the length */
-	(void)lseek(file_fd, (off_t)0, SEEK_SET);																									   /* lseek back to the file start ready for reading */
+	len = (long)lseek(file_fd, (off_t)0, SEEK_END);	/* lseek to the file end to find the length */
+	(void)lseek(file_fd, (off_t)0, SEEK_SET); /* lseek back to the file start ready for reading */
 	(void)sprintf(buffer, "HTTP/1.1 200 OK\nServer: nweb/%d.0\nContent-Length: %ld\nConnection: close\nContent-Type: %s\n\n", VERSION, len, fstr); /* Header + a blank line */
 	logger(LOG, "Header", buffer, hit);
-	(void)write(fd, buffer, strlen(buffer));
+	if(write(fd, buffer, strlen(buffer))){};
 
 	/* Send the statistical headers described in the paper, example below
     
@@ -143,7 +143,7 @@ void web(int fd, int hit)
 	/* send file in 8KB block - last block may be smaller */
 	while ((ret = read(file_fd, buffer, BUFSIZE)) > 0)
 	{
-		(void)write(fd, buffer, ret);
+		if(write(fd, buffer, ret)){};
 	}
 	sleep(1); /* allow socket to drain before signalling the socket is closed */
 	close(fd);
