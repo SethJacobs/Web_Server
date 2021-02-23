@@ -20,6 +20,11 @@
 pthread_mutex_t the_mutex;
 pthread_cond_t condc, condp;
 int buffer = 0;
+int init_threads;
+int MAX;
+char *order;
+struct queue bufferFIFO;
+
 
 struct
 {
@@ -37,6 +42,22 @@ struct
 	{"htm", "text/html"},
 	{"html", "text/html"},
 	{0, 0}};
+
+struct node
+{
+	struct node *next;
+	int call;
+	int hit;
+};
+
+struct queue
+{
+	struct node *head;
+	struct node *tail;
+	int counter;
+};
+
+
 
 void logger(int type, char *s1, char *s2, int socket_fd)
 {
@@ -110,7 +131,7 @@ void web(int fd, int hit)
 			logger(FORBIDDEN, "Parent directory (..) path names not supported", buffer, fd);
 		}
 	if (!strncmp(&buffer[0], "GET /\0", 6) || !strncmp(&buffer[0], "get /\0", 6)) /* convert no filename to index file */
-		(void)strcpy(buffer, "GET /index.html");
+		(void)strcpy(buffer, "GET /index.html");	
 
 	/* work out the file type and check we support it */
 	buflen = strlen(buffer);
@@ -156,7 +177,7 @@ void web(int fd, int hit)
 
 void *producer(void *ptr) {
 	int i;
-	for (i= 1; i <= 16; i++) {
+	for (i = 1; i < init_threads; i++) {
 		pthread_mutex_lock(&the_mutex); /* get exclusive access to buffer */
 		while (buffer != 0) pthread_cond_wait(&condp, &the_mutex);
 		buffer = i; /* put item in buffer */
@@ -168,9 +189,12 @@ void *producer(void *ptr) {
 
 void *consumer(void *ptr) {
 	pthread_mutex_lock(&the_mutex); /* get exclusive access to buffer */
-	while (buffer == 0) pthread_cond_wait(&condc, &the_mutex);
-	buffer = 0; /* take item out of buffer */
-	pthread_cond_signal(&condp); /* wake up producer */
+	if(!strcmp(order,"FIFO")){
+		while (bufferFIFO.counter != 0) pthread_cond_wait(&condc, &the_mutex);
+		bufferFIFO.counter--; /* take item out of buffer */
+		web(bufferFIFO.head->call, bufferFIFO.head->hit); /* never returns */
+		bufferFIFO.head = bufferFIFO.head->next;
+	}
 	pthread_mutex_unlock(&the_mutex); /* release access to buffer */
 	pthread_exit(0);
 }
@@ -188,12 +212,20 @@ int main(int argc, char **argv)
 	pthread_cond_destroy(&condc);
 	pthread_cond_destroy(&condp);
 	pthread_mutex_destroy(&the_mutex);
-	int i, port, pid, listenfd, socketfd, hit;
+	int i, port, listenfd, socketfd, hit;
 	socklen_t length;
 	static struct sockaddr_in cli_addr;	 /* static = initialised to zeros */
 	static struct sockaddr_in serv_addr; /* static = initialised to zeros */
 
-	if (argc < 5 || argc > 5 || !strcmp(argv[1], "-?"))
+	MAX = atoi(argv[3]);
+	init_threads = atoi(argv[2]);
+	order = argv[4];
+	bufferFIFO.counter = 0;
+	// struct node *newNode;
+	// bufferFIFO.head = newNode;
+	// bufferFIFO.head->next = newNode;
+
+	if (argc != 6 || !strcmp(argv[1], "-?"))
 	{
 		(void)printf("hint: nweb Port-Number Top-Directory\t\tversion %d\n\n"
 					 "\tnweb is a small and very safe mini web server\n"
@@ -225,18 +257,26 @@ int main(int argc, char **argv)
 		exit(4);
 	}
 	producer(NULL);
-	/* Become deamon + unstopable and no zombies children (= no wait()) */
-	if (fork() != 0)
-		return 0;					/* parent returns OK to shell */
-	(void)signal(SIGCHLD, SIG_IGN); /* ignore child death */
-	(void)signal(SIGHUP, SIG_IGN);	/* ignore terminal hangups */
-	for (i = 0; i < 32; i++)
-		(void)close(i); /* close open files */
-	(void)setpgrp();	/* break away from process group */
-	logger(LOG, "nweb starting", argv[1], getpid());
+	pthread_cond_wait(&condc,&the_mutex);
+	
+	// /* Become deamon + unstopable and no zombies children (= no wait()) */
+	// if (fork() != 0)
+	// 	return 0;					/* parent returns OK to shell */
+	// (void)signal(SIGCHLD, SIG_IGN); /* ignore child death */
+	// (void)signal(SIGHUP, SIG_IGN);	/* ignore terminal hangups */
+	// for (i = 0; i < 32; i++)
+	// 	(void)close(i); /* close open files */
+	// (void)setpgrp();	/* break away from process group */
+	// logger(LOG, "nweb starting", argv[1], getpid());
 	/* setup the network socket */
+
+	//ERRORS
 	if ((listenfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
 		logger(ERROR, "system call", "socket", 0);
+
+	//implement listenfd
+
+
 	port = atoi(argv[1]);
 	if (port < 0 || port > 60000)
 		logger(ERROR, "Invalid port number (try 1->60000)", argv[1], 0);
@@ -247,26 +287,47 @@ int main(int argc, char **argv)
 		logger(ERROR, "system call", "bind", 0);
 	if (listen(listenfd, 64) < 0)
 		logger(ERROR, "system call", "listen", 0);
+
+	//RUN THE SERVER WITH FOREVER LOOP
 	for (hit = 1;; hit++)
 	{
 		length = sizeof(cli_addr);
 		if ((socketfd = accept(listenfd, (struct sockaddr *)&cli_addr, &length)) < 0)
 			logger(ERROR, "system call", "accept", 0);
-		if ((pid = fork()) < 0)
-		{
-			logger(ERROR, "system call", "fork", 0);
-		}
-		else
-		{
-			if (pid == 0)
-			{ /* child */
-				(void)close(listenfd);
-				web(socketfd, hit); /* never returns */
+
+		if (!strcmp(argv[4],"FIFO")){
+			(void)close(listenfd);
+			if (bufferFIFO.counter == 0){
+				struct node *newNode;
+				bufferFIFO.head = newNode;
+				bufferFIFO.tail = newNode;
+				bufferFIFO.head->next = bufferFIFO.tail;
+				bufferFIFO.head->call = socketfd;
+				bufferFIFO.head->hit = hit;
+			} else{
+				struct node *newNode;
+				bufferFIFO.tail->next = newNode;
+				bufferFIFO.tail = bufferFIFO.tail->next;
+				bufferFIFO.tail->call = socketfd;
+				bufferFIFO.tail->hit = hit;
 			}
-			else
-			{ /* parent */
+			bufferFIFO.counter++;
+		}
+		// if ((pid = fork()) < 0)
+		// {
+		// 	logger(ERROR, "system call", "fork", 0);
+		// }
+		// else
+		// {
+		// 	if (pid == 0)
+		// 	{ /* child */
+				// (void)close(listenfd);
+				// web(socketfd, hit); /* never returns */
+		// 	}
+		// 	else
+		// 	{ /* parent */
 				(void)close(socketfd);
-			}
-		}
+		// 	}
+		// }
 	}
 }
