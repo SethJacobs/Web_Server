@@ -23,7 +23,8 @@ int buffer = 0;
 int init_threads;
 int MAX;
 char *order;
-struct queue bufferFIFO;
+struct queue bufferQueue;
+
 
 
 struct
@@ -189,12 +190,12 @@ void *producer(void *ptr) {
 
 void *consumer(void *ptr) {
 	pthread_mutex_lock(&the_mutex); /* get exclusive access to buffer */
-	if(!strcmp(order,"FIFO")){
-		while (bufferFIFO.counter != 0) pthread_cond_wait(&condc, &the_mutex);
-		bufferFIFO.counter--; /* take item out of buffer */
-		web(bufferFIFO.head->call, bufferFIFO.head->hit); /* never returns */
-		bufferFIFO.head = bufferFIFO.head->next;
-	}
+	// if(!strcmp(order,"FIFO") || !strcmp(order, "ANY") || !strcmp(order, "HPIC")){
+		while (bufferQueue.counter != 0) pthread_cond_wait(&condc, &the_mutex);
+		bufferQueue.counter--; /* take item out of buffer */
+		web(bufferQueue.head->call, bufferQueue.head->hit); /* never returns */
+		bufferQueue.head = bufferQueue.head->next;
+	// }
 	pthread_mutex_unlock(&the_mutex); /* release access to buffer */
 	pthread_exit(0);
 }
@@ -212,7 +213,8 @@ int main(int argc, char **argv)
 	pthread_cond_destroy(&condc);
 	pthread_cond_destroy(&condp);
 	pthread_mutex_destroy(&the_mutex);
-	int i, port, listenfd, socketfd, hit;
+	int i, port, listenfd, socketfd, hit, fd;
+	long len;
 	socklen_t length;
 	static struct sockaddr_in cli_addr;	 /* static = initialised to zeros */
 	static struct sockaddr_in serv_addr; /* static = initialised to zeros */
@@ -220,10 +222,10 @@ int main(int argc, char **argv)
 	MAX = atoi(argv[3]);
 	init_threads = atoi(argv[2]);
 	order = argv[4];
-	bufferFIFO.counter = 0;
+	bufferQueue.counter = 0;
 	// struct node *newNode;
-	// bufferFIFO.head = newNode;
-	// bufferFIFO.head->next = newNode;
+	// bufferQueue.head = newNode;
+	// bufferQueue.head->next = newNode;
 
 	if (argc != 6 || !strcmp(argv[1], "-?"))
 	{
@@ -294,25 +296,107 @@ int main(int argc, char **argv)
 		length = sizeof(cli_addr);
 		if ((socketfd = accept(listenfd, (struct sockaddr *)&cli_addr, &length)) < 0)
 			logger(ERROR, "system call", "accept", 0);
-
+		(void)close(listenfd);
 		if (!strcmp(argv[4],"FIFO")){
-			(void)close(listenfd);
-			if (bufferFIFO.counter == 0){
+			if (bufferQueue.counter == 0){
 				struct node *newNode;
-				bufferFIFO.head = newNode;
-				bufferFIFO.tail = newNode;
-				bufferFIFO.head->next = bufferFIFO.tail;
-				bufferFIFO.head->call = socketfd;
-				bufferFIFO.head->hit = hit;
-			} else{
+				bufferQueue.head = newNode;
+				bufferQueue.tail = newNode;
+				bufferQueue.head->next = bufferQueue.tail;
+				bufferQueue.head->call = socketfd;
+				bufferQueue.head->hit = hit;
+			} else {
 				struct node *newNode;
-				bufferFIFO.tail->next = newNode;
-				bufferFIFO.tail = bufferFIFO.tail->next;
-				bufferFIFO.tail->call = socketfd;
-				bufferFIFO.tail->hit = hit;
+				bufferQueue.tail->next = newNode;
+				bufferQueue.tail = bufferQueue.tail->next;
+				bufferQueue.tail->call = socketfd;
+				bufferQueue.tail->hit = hit;
 			}
-			bufferFIFO.counter++;
+			bufferQueue.counter++;
 		}
+
+		if(!strcmp(argv[4], "HPIC")) {
+			int buflen;
+			char *fstr;
+			static char buffer[BUFSIZE + 1]; /* static so zero filled */
+
+			if(read(fd, buffer, BUFSIZE)){};
+			/* work out the file type and check we support it */
+			buflen = strlen(buffer);
+			fstr = (char *)0;
+			for (i = 0; extensions[i].ext != 0; i++)
+			{
+				len = strlen(extensions[i].ext);
+				if (!strncmp(&buffer[buflen - len], extensions[i].ext, len))
+				{
+					fstr = extensions[i].filetype;
+					break;
+				}
+			}
+			if(bufferQueue.counter==0){
+				struct node *newNode;
+				bufferQueue.head = newNode;
+				bufferQueue.tail = newNode;
+				bufferQueue.head->next = bufferQueue.tail;
+				bufferQueue.head->call = socketfd;
+				bufferQueue.head->hit = hit;
+			} else if (strcmp(fstr, ".html")) {
+				struct node *temp = bufferQueue.head;
+				struct node *newNode;
+				newNode->next = temp;
+				newNode->call = socketfd;
+				newNode->hit = hit;
+				bufferQueue.head=newNode;
+			} else /*is not a jpg*/ {
+				struct node *newNode;
+				bufferQueue.tail->next = newNode;
+				bufferQueue.tail = bufferQueue.tail->next;
+				bufferQueue.tail->call = socketfd;
+				bufferQueue.tail->hit = hit;
+			}
+		}
+
+		if(!strcmp(argv[4], "HPHC")) {
+			int buflen;
+			char *fstr;
+			static char buffer[BUFSIZE + 1]; /* static so zero filled */
+
+			if(read(fd, buffer, BUFSIZE)){};
+			/* work out the file type and check we support it */
+			buflen = strlen(buffer);
+			fstr = (char *)0;
+			for (i = 0; extensions[i].ext != 0; i++)
+			{
+				len = strlen(extensions[i].ext);
+				if (!strncmp(&buffer[buflen - len], extensions[i].ext, len))
+				{
+					fstr = extensions[i].filetype;
+					break;
+				}
+			}
+			if(bufferQueue.counter==0){
+				struct node *newNode;
+				bufferQueue.head = newNode;
+				bufferQueue.tail = newNode;
+				bufferQueue.head->next = bufferQueue.tail;
+				bufferQueue.head->call = socketfd;
+				bufferQueue.head->hit = hit;
+			} else if (!strcmp(fstr, ".html")) {
+				struct node *temp = bufferQueue.head;
+				struct node *newNode;
+				newNode->next = temp;
+				newNode->call = socketfd;
+				newNode->hit = hit;
+				bufferQueue.head=newNode;
+			} else /*is not a jpg*/ {
+				struct node *newNode;
+				bufferQueue.tail->next = newNode;
+				bufferQueue.tail = bufferQueue.tail->next;
+				bufferQueue.tail->call = socketfd;
+				bufferQueue.tail->hit = hit;
+			}
+		}
+
 		// if ((pid = fork()) < 0)
 		// {
 		// 	logger(ERROR, "system call", "fork", 0);
