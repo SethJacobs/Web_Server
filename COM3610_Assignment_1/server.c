@@ -25,7 +25,8 @@ int MAX;
 char *order;
 struct queue bufferQueue;
 
-
+void *producer(void*ptr);
+void *consumer(void*ptr);
 
 struct
 {
@@ -175,23 +176,10 @@ void web(int fd, int hit)
 	close(fd);
 	exit(1);
 }
-
-void *producer(void *ptr) {
-	int i;
-	for (i = 1; i < init_threads; i++) {
-		pthread_mutex_lock(&the_mutex); /* get exclusive access to buffer */
-		while (buffer != 0) pthread_cond_wait(&condp, &the_mutex);
-		buffer = i; /* put item in buffer */
-		pthread_cond_signal(&condc); /* wake up consumer */
-		pthread_mutex_unlock(&the_mutex); /* release access to buffer */
-	}
-	pthread_exit(0);
-}
-
 void *consumer(void *ptr) {
 	pthread_mutex_lock(&the_mutex); /* get exclusive access to buffer */
 	// if(!strcmp(order,"FIFO") || !strcmp(order, "ANY") || !strcmp(order, "HPIC")){
-		while (bufferQueue.counter != 0) pthread_cond_wait(&condc, &the_mutex);
+		while (bufferQueue.counter == 0) pthread_cond_wait(&condc, &the_mutex);
 		bufferQueue.counter--; /* take item out of buffer */
 		web(bufferQueue.head->call, bufferQueue.head->hit); /* never returns */
 		bufferQueue.head = bufferQueue.head->next;
@@ -199,17 +187,34 @@ void *consumer(void *ptr) {
 	pthread_mutex_unlock(&the_mutex); /* release access to buffer */
 	pthread_exit(0);
 }
+void *producer(void *ptr) {
+	int i;
+	for (i = 1; i < init_threads; i++) {
+		pthread_t con;
+		pthread_mutex_lock(&the_mutex); /* get exclusive access to buffer */
+		// while (buffer != 0) pthread_cond_wait(&condp, &the_mutex);
+		// buffer = i; /* put item in buffer */
+		// pthread_cond_signal(&condc); /* wake up consumer */
+		
+		pthread_create(&con, 0, consumer, 0);
+		pthread_join(con, 0);
+		pthread_mutex_unlock(&the_mutex); /* release access to buffer */
+	}
+	pthread_exit(0);
+}
+
+
 
 int main(int argc, char **argv)
 {
-	pthread_t pro, con;
+	pthread_t pro;
 	pthread_mutex_init(&the_mutex, 0);
 	pthread_cond_init(&condc, 0);
 	pthread_cond_init(&condp, 0);
-	pthread_create(&con, 0, consumer, 0);
+	// pthread_create(&con, 0, consumer, 0);
 	pthread_create(&pro, 0, producer, 0);
 	pthread_join(pro, 0);
-	pthread_join(con, 0);
+	// pthread_join(con, 0);
 	pthread_cond_destroy(&condc);
 	pthread_cond_destroy(&condp);
 	pthread_mutex_destroy(&the_mutex);
