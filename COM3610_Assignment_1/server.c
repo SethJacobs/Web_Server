@@ -196,16 +196,16 @@ void *producer(void *ptr) {
 	int i;
 	printf("you guys done gone and produced your souls %d", init_threads);
 	for (i = 1; i < init_threads; i++) {
-		pthread_t con;
+		// pthread_t con;
 		printf("%d", i);
-		pthread_mutex_lock(&the_mutex); /* get exclusive access to buffer */
-		// while (buffer != 0) pthread_cond_wait(&condp, &the_mutex);
-		// buffer = i; /* put item in buffer */
-		// pthread_cond_signal(&condc); /* wake up consumer */
+		// pthread_mutex_lock(&the_mutex); /* get exclusive access to buffer */
+		// // while (buffer != 0) pthread_cond_wait(&condp, &the_mutex);
+		// // buffer = i; /* put item in buffer */
+		// // pthread_cond_signal(&condc); /* wake up consumer */
 		
-		pthread_create(&con, 0, consumer, 0);
-		pthread_join(con, 0);
-		pthread_mutex_unlock(&the_mutex); /* release access to buffer */
+		// pthread_create(&con, 0, consumer, 0);
+		// pthread_join(con, 0);
+		// pthread_mutex_unlock(&the_mutex); /* release access to buffer */
 	}
 	pthread_exit(0);
 }
@@ -215,12 +215,21 @@ void *producer(void *ptr) {
 int main(int argc, char **argv)
 {
 	printf("starting");
+	
+	int i, port, listenfd, socketfd, hit, fd, foo;
+	long len;
+	socklen_t length;
+	static struct sockaddr_in cli_addr;	 /* static = initialised to zeros */
+	static struct sockaddr_in serv_addr;
+	
+	
+	pthread_t pro; 
 	MAX = atoi(argv[4]);
 	init_threads = atoi(argv[3]);
 	order = argv[5];
 	bufferQueue.counter = 0;
-	// printf("1: %s, 2: %s, 3: %s, 4: %d, 5: %d, 6: %s", argv[0], argv[1], argv[2], init_threads, MAX, order);
-	pthread_t pro;
+	printf("1: %s, 2: %s, 3: %s, 4: %d, 5: %d, 6: %s", argv[0], argv[1], argv[2], atoi(argv[3]), MAX, order);
+	
 	pthread_mutex_init(&the_mutex, 0);
 	pthread_cond_init(&condc, 0);
 	pthread_cond_init(&condp, 0);
@@ -231,11 +240,7 @@ int main(int argc, char **argv)
 	pthread_cond_destroy(&condc);
 	pthread_cond_destroy(&condp);
 	pthread_mutex_destroy(&the_mutex);
-	int i, port, listenfd, socketfd, hit, fd, foo;
-	long len;
-	socklen_t length;
-	static struct sockaddr_in cli_addr;	 /* static = initialised to zeros */
-	static struct sockaddr_in serv_addr; /* static = initialised to zeros */
+	/* static = initialised to zeros */
 	
 	// struct node *newNode;
 	// bufferQueue.head = newNode;
