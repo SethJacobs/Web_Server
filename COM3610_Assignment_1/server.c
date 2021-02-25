@@ -68,7 +68,11 @@ void logger(int type, char *s1, char *s2, int socket_fd)
 
 	switch (type)
 	{
+		
 	case ERROR:
+		// printf("Why you no go here?");
+		// printf("%d", logbuffer[0]);
+		// printf(s1)
 		(void)sprintf(logbuffer, "ERROR: %s:%s Errno=%d exiting pid=%d", s1, s2, errno, getpid());
 		break;
 	case FORBIDDEN:
@@ -177,6 +181,7 @@ void web(int fd, int hit)
 	exit(1);
 }
 void *consumer(void *ptr) {
+	printf("you guys done gone and consumed your souls");
 	pthread_mutex_lock(&the_mutex); /* get exclusive access to buffer */
 	// if(!strcmp(order,"FIFO") || !strcmp(order, "ANY") || !strcmp(order, "HPIC")){
 		while (bufferQueue.counter == 0) pthread_cond_wait(&condc, &the_mutex);
@@ -189,8 +194,10 @@ void *consumer(void *ptr) {
 }
 void *producer(void *ptr) {
 	int i;
+	printf("you guys done gone and produced your souls %d", init_threads);
 	for (i = 1; i < init_threads; i++) {
 		pthread_t con;
+		printf("%d", i);
 		pthread_mutex_lock(&the_mutex); /* get exclusive access to buffer */
 		// while (buffer != 0) pthread_cond_wait(&condp, &the_mutex);
 		// buffer = i; /* put item in buffer */
@@ -207,6 +214,12 @@ void *producer(void *ptr) {
 
 int main(int argc, char **argv)
 {
+	printf("starting");
+	MAX = atoi(argv[4]);
+	init_threads = atoi(argv[3]);
+	order = argv[5];
+	bufferQueue.counter = 0;
+	// printf("1: %s, 2: %s, 3: %s, 4: %d, 5: %d, 6: %s", argv[0], argv[1], argv[2], init_threads, MAX, order);
 	pthread_t pro;
 	pthread_mutex_init(&the_mutex, 0);
 	pthread_cond_init(&condc, 0);
@@ -218,16 +231,12 @@ int main(int argc, char **argv)
 	pthread_cond_destroy(&condc);
 	pthread_cond_destroy(&condp);
 	pthread_mutex_destroy(&the_mutex);
-	int i, port, listenfd, socketfd, hit, fd;
+	int i, port, listenfd, socketfd, hit, fd, foo;
 	long len;
 	socklen_t length;
 	static struct sockaddr_in cli_addr;	 /* static = initialised to zeros */
 	static struct sockaddr_in serv_addr; /* static = initialised to zeros */
-
-	MAX = atoi(argv[3]);
-	init_threads = atoi(argv[2]);
-	order = argv[4];
-	bufferQueue.counter = 0;
+	
 	// struct node *newNode;
 	// bufferQueue.head = newNode;
 	// bufferQueue.head->next = newNode;
@@ -263,9 +272,12 @@ int main(int argc, char **argv)
 		(void)printf("ERROR: Can't Change to directory %s\n", argv[2]);
 		exit(4);
 	}
-	producer(NULL);
+
+	// producer(NULL);
+
 	pthread_cond_wait(&condc,&the_mutex);
 	
+
 	// /* Become deamon + unstopable and no zombies children (= no wait()) */
 	// if (fork() != 0)
 	// 	return 0;					/* parent returns OK to shell */
@@ -290,37 +302,46 @@ int main(int argc, char **argv)
 	serv_addr.sin_family = AF_INET;
 	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 	serv_addr.sin_port = htons(port);
-	if (bind(listenfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+	if ((foo = bind(listenfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr))) < 0){
+		printf("I HOPE IT GETS TO HERE %d", foo);
+
 		logger(ERROR, "system call", "bind", 0);
+	}
+	
 	if (listen(listenfd, 64) < 0)
 		logger(ERROR, "system call", "listen", 0);
 
 	//RUN THE SERVER WITH FOREVER LOOP
 	for (hit = 1;; hit++)
 	{
+		printf("%d ", hit);
 		length = sizeof(cli_addr);
 		if ((socketfd = accept(listenfd, (struct sockaddr *)&cli_addr, &length)) < 0)
 			logger(ERROR, "system call", "accept", 0);
+		// printf("im here");
 		(void)close(listenfd);
-		if (!strcmp(argv[4],"FIFO")){
+		printf("%s", argv[5]);
+		if (!strcmp(argv[5],"FIFO")){
+			printf("yes eli i did %d", bufferQueue.counter);
 			if (bufferQueue.counter == 0){
-				struct node *newNode;
-				bufferQueue.head = newNode;
-				bufferQueue.tail = newNode;
+				struct node newNode;
+				bufferQueue.head = &newNode;
+				bufferQueue.tail = &newNode;
 				bufferQueue.head->next = bufferQueue.tail;
 				bufferQueue.head->call = socketfd;
 				bufferQueue.head->hit = hit;
 			} else {
-				struct node *newNode;
-				bufferQueue.tail->next = newNode;
+				struct node newNode;
+				bufferQueue.tail->next = &newNode;
 				bufferQueue.tail = bufferQueue.tail->next;
 				bufferQueue.tail->call = socketfd;
 				bufferQueue.tail->hit = hit;
 			}
 			bufferQueue.counter++;
+			pthread_cond_signal(&condc);
 		}
 
-		if(!strcmp(argv[4], "HPIC")) {
+		if(!strcmp(argv[5], "HPIC")) {
 			int buflen;
 			char *fstr;
 			static char buffer[BUFSIZE + 1]; /* static so zero filled */
@@ -339,29 +360,29 @@ int main(int argc, char **argv)
 				}
 			}
 			if(bufferQueue.counter==0){
-				struct node *newNode;
-				bufferQueue.head = newNode;
-				bufferQueue.tail = newNode;
+				struct node newNode;
+				bufferQueue.head = &newNode;
+				bufferQueue.tail = &newNode;
 				bufferQueue.head->next = bufferQueue.tail;
 				bufferQueue.head->call = socketfd;
 				bufferQueue.head->hit = hit;
 			} else if (strcmp(fstr, ".html")) {
 				struct node *temp = bufferQueue.head;
-				struct node *newNode;
-				newNode->next = temp;
-				newNode->call = socketfd;
-				newNode->hit = hit;
-				bufferQueue.head=newNode;
+				struct node newNode;
+				bufferQueue.head = &newNode;
+				bufferQueue.head->next = temp;
+				bufferQueue.head->call = socketfd;
+				bufferQueue.head->hit = hit;
 			} else /*is not a jpg*/ {
-				struct node *newNode;
-				bufferQueue.tail->next = newNode;
+				struct node newNode;
+				bufferQueue.tail->next = &newNode;
 				bufferQueue.tail = bufferQueue.tail->next;
 				bufferQueue.tail->call = socketfd;
 				bufferQueue.tail->hit = hit;
 			}
 		}
 
-		if(!strcmp(argv[4], "HPHC")) {
+		if(!strcmp(argv[5], "HPHC")) {
 			int buflen;
 			char *fstr;
 			static char buffer[BUFSIZE + 1]; /* static so zero filled */
@@ -380,22 +401,22 @@ int main(int argc, char **argv)
 				}
 			}
 			if(bufferQueue.counter==0){
-				struct node *newNode;
-				bufferQueue.head = newNode;
-				bufferQueue.tail = newNode;
+				struct node newNode;
+				bufferQueue.head = &newNode;
+				bufferQueue.tail = &newNode;
 				bufferQueue.head->next = bufferQueue.tail;
 				bufferQueue.head->call = socketfd;
 				bufferQueue.head->hit = hit;
 			} else if (!strcmp(fstr, ".html")) {
 				struct node *temp = bufferQueue.head;
-				struct node *newNode;
-				newNode->next = temp;
-				newNode->call = socketfd;
-				newNode->hit = hit;
-				bufferQueue.head=newNode;
+				struct node newNode;
+				bufferQueue.head = &newNode;
+				bufferQueue.head->next = temp;
+				bufferQueue.head->call = socketfd;
+				bufferQueue.head->hit = hit;
 			} else /*is not a jpg*/ {
-				struct node *newNode;
-				bufferQueue.tail->next = newNode;
+				struct node newNode;
+				bufferQueue.tail->next = &newNode;
 				bufferQueue.tail = bufferQueue.tail->next;
 				bufferQueue.tail->call = socketfd;
 				bufferQueue.tail->hit = hit;
