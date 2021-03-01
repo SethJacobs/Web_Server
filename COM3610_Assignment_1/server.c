@@ -192,23 +192,23 @@ void *consumer(void *ptr) {
 	pthread_mutex_unlock(&the_mutex); /* release access to buffer */
 	pthread_exit(0);
 }
-void *producer(void *ptr) {
-	int i;
-	printf("you guys done gone and produced your souls %d", init_threads);
-	for (i = 1; i < init_threads; i++) {
-		// pthread_t con;
-		printf("%d", i);
-		// pthread_mutex_lock(&the_mutex); /* get exclusive access to buffer */
-		// // while (buffer != 0) pthread_cond_wait(&condp, &the_mutex);
-		// // buffer = i; /* put item in buffer */
-		// // pthread_cond_signal(&condc); /* wake up consumer */
+// void *producer(void *ptr) {
+// 	int i;
+// 	printf("you guys done gone and produced your souls %d", init_threads);
+// 	for (i = 1; i < init_threads; i++) {
+// 		pthread_t con;
+// 		printf("%d", i);
+// 		pthread_mutex_lock(&the_mutex); /* get exclusive access to buffer */
+// 		// while (buffer != 0) pthread_cond_wait(&condp, &the_mutex);
+// 		// buffer = i; /* put item in buffer */
+// 		// pthread_cond_signal(&condc); /* wake up consumer */
 		
-		// pthread_create(&con, 0, consumer, 0);
-		// pthread_join(con, 0);
-		// pthread_mutex_unlock(&the_mutex); /* release access to buffer */
-	}
-	pthread_exit(0);
-}
+// 		pthread_create(&con, 0, consumer, 0);
+// 		pthread_join(con, 0);
+// 		pthread_mutex_unlock(&the_mutex); /* release access to buffer */
+// 	}
+// 	pthread_exit(0);
+// }
 
 
 
@@ -234,12 +234,12 @@ int main(int argc, char **argv)
 	pthread_cond_init(&condc, 0);
 	pthread_cond_init(&condp, 0);
 	// pthread_create(&con, 0, consumer, 0);
+	
 	pthread_create(&pro, 0, producer, 0);
-	pthread_join(pro, 0);
+	// pthread_join(pro, 0);
 	// pthread_join(con, 0);
 	pthread_cond_destroy(&condc);
 	pthread_cond_destroy(&condp);
-	pthread_mutex_destroy(&the_mutex);
 	/* static = initialised to zeros */
 	
 	// struct node *newNode;
@@ -445,4 +445,6 @@ int main(int argc, char **argv)
 		// 	}
 		// }
 	}
+	pthread_mutex_destroy(&the_mutex);
+
 }
