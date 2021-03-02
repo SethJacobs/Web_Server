@@ -18,7 +18,7 @@
 #define NOTFOUND 404
 
 pthread_mutex_t the_mutex;
-pthread_cond_t condc, condp;
+pthread_cond_t condc;
 int buffer = 0;
 int init_threads;
 int MAX;
@@ -181,15 +181,22 @@ void web(int fd, int hit)
 	exit(1);
 }
 void *consumer(void *ptr) {
-	printf("you guys done gone and consumed your souls");
-	pthread_mutex_lock(&the_mutex); /* get exclusive access to buffer */
-	// if(!strcmp(order,"FIFO") || !strcmp(order, "ANY") || !strcmp(order, "HPIC")){
-		while (bufferQueue.counter == 0) pthread_cond_wait(&condc, &the_mutex);
-		bufferQueue.counter--; /* take item out of buffer */
-		web(bufferQueue.head->call, bufferQueue.head->hit); /* never returns */
-		bufferQueue.head = bufferQueue.head->next;
-	// }
-	pthread_mutex_unlock(&the_mutex); /* release access to buffer */
+	while(1){
+		// printf("you guys done gone and consumed your souls");
+		pthread_mutex_lock(&the_mutex); /* get exclusive access to buffer */
+	// 	// if(!strcmp(order,"FIFO") || !strcmp(order, "ANY") || !strcmp(order, "HPIC")){
+			while (bufferQueue.counter == 0){
+				pthread_cond_wait(&condc, &the_mutex);
+			} 
+			printf("AWAKEN!!!!\n");
+			bufferQueue.counter--; /* take item out of buffer */
+			web(bufferQueue.head->call, bufferQueue.head->hit); /* never returns */
+			printf("Taken care of.\n"); 
+			bufferQueue.head = bufferQueue.head->next;
+		// }
+		pthread_mutex_unlock(&the_mutex); /* release access to buffer */
+	// 	pthread_exit(0);
+	}
 	pthread_exit(0);
 }
 // void *producer(void *ptr) {
@@ -214,34 +221,42 @@ void *consumer(void *ptr) {
 
 int main(int argc, char **argv)
 {
-	printf("starting");
+	printf("%d ", argc);
 	
 	int i, port, listenfd, socketfd, hit, fd, foo;
 	long len;
 	socklen_t length;
 	static struct sockaddr_in cli_addr;	 /* static = initialised to zeros */
 	static struct sockaddr_in serv_addr;
+
 	
 	
-	pthread_t pro; 
+	
 	MAX = atoi(argv[4]);
 	init_threads = atoi(argv[3]);
 	order = argv[5];
 	bufferQueue.counter = 0;
+	pthread_t threads[init_threads]; 
 	printf("1: %s, 2: %s, 3: %s, 4: %d, 5: %d, 6: %s", argv[0], argv[1], argv[2], atoi(argv[3]), MAX, order);
 	
 	pthread_mutex_init(&the_mutex, 0);
 	pthread_cond_init(&condc, 0);
-	pthread_cond_init(&condp, 0);
-	// pthread_create(&con, 0, consumer, 0);
+	// pthread_cond_init(&condp, 0);
 	
-	pthread_create(&pro, 0, producer, 0);
+	
+	// pthread_create(&pro, 0, producer, 0);
 	// pthread_join(pro, 0);
-	// pthread_join(con, 0);
-	pthread_cond_destroy(&condc);
-	pthread_cond_destroy(&condp);
+	
+	// pthread_cond_destroy(&condc);
+	// pthread_cond_destroy(&condp);
 	/* static = initialised to zeros */
 	
+	for(int i = 0; i < init_threads; i++){
+		pthread_create(&threads[i], 0, consumer, 0);
+	}
+	// for(int i = 0; i < init_threads; i++){
+	// 	pthread_join(threads[i], 0);
+	// }
 	// struct node *newNode;
 	// bufferQueue.head = newNode;
 	// bufferQueue.head->next = newNode;
@@ -280,7 +295,7 @@ int main(int argc, char **argv)
 
 	// producer(NULL);
 
-	pthread_cond_wait(&condc,&the_mutex);
+	// pthread_cond_wait(&condc,&the_mutex);
 	
 
 	// /* Become deamon + unstopable and no zombies children (= no wait()) */
@@ -316,33 +331,40 @@ int main(int argc, char **argv)
 	if (listen(listenfd, 64) < 0)
 		logger(ERROR, "system call", "listen", 0);
 
+	// printf("%ls %", &socketfd, &cli_addr);
+
+	// if(length || len || fd || hit){}
+
 	//RUN THE SERVER WITH FOREVER LOOP
 	for (hit = 1;; hit++)
 	{
 		printf("%d ", hit);
+		// if(bufferQueue.counter != 0) continue;
+		printf(" this is the chup listen  ya chup %d ", listenfd);
 		length = sizeof(cli_addr);
 		if ((socketfd = accept(listenfd, (struct sockaddr *)&cli_addr, &length)) < 0)
 			logger(ERROR, "system call", "accept", 0);
+		
 		// printf("im here");
-		(void)close(listenfd);
 		printf("%s", argv[5]);
 		if (!strcmp(argv[5],"FIFO")){
-			printf("yes eli i did %d", bufferQueue.counter);
-			if (bufferQueue.counter == 0){
-				struct node newNode;
-				bufferQueue.head = &newNode;
-				bufferQueue.tail = &newNode;
-				bufferQueue.head->next = bufferQueue.tail;
-				bufferQueue.head->call = socketfd;
-				bufferQueue.head->hit = hit;
-			} else {
-				struct node newNode;
-				bufferQueue.tail->next = &newNode;
-				bufferQueue.tail = bufferQueue.tail->next;
-				bufferQueue.tail->call = socketfd;
-				bufferQueue.tail->hit = hit;
-			}
-			bufferQueue.counter++;
+			// printf("yes eli i did %d", bufferQueue.counter);
+			// if (bufferQueue.counter == 0){
+			// 	struct node newNode;
+			// 	bufferQueue.head = &newNode;
+			// 	bufferQueue.tail = &newNode;
+			// 	bufferQueue.head->next = bufferQueue.tail;
+			// 	bufferQueue.head->call = socketfd;
+			// 	bufferQueue.head->hit = hit;
+			// } else {
+			// 	struct node newNode;
+			// 	bufferQueue.tail->next = &newNode;
+			// 	bufferQueue.tail = bufferQueue.tail->next;
+			// 	bufferQueue.tail->call = socketfd;
+			// 	bufferQueue.tail->hit = hit;
+			// }
+			// bufferQueue.counter++;
+			// printf(" This is the counter: %d", bufferQueue.counter);
 			pthread_cond_signal(&condc);
 		}
 
@@ -436,14 +458,17 @@ int main(int argc, char **argv)
 		// {
 		// 	if (pid == 0)
 		// 	{ /* child */
-				// (void)close(listenfd);
-				// web(socketfd, hit); /* never returns */
+		// 		(void)close(listenfd);
+		// 		web(socketfd, hit); /* never returns */
 		// 	}
 		// 	else
 		// 	{ /* parent */
-				(void)close(socketfd);
+		// 		(void)close(socketfd);
 		// 	}
 		// }
+		(void)close(socketfd);
+		(void)close(listenfd);
+
 	}
 	pthread_mutex_destroy(&the_mutex);
 
