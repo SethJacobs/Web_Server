@@ -374,87 +374,87 @@ int main(int argc, char **argv)
 			pthread_cond_signal(&condc);
 		}
 
-		// if(!strcmp(argv[5], "HPIC")) {
-		// 	int buflen;
-		// 	char *fstr;
-		// 	static char buffer[BUFSIZE + 1]; /* static so zero filled */
+		if(!strcmp(argv[5], "HPIC")) {
+			int buflen;
+			char *fstr;
+			static char buffer[BUFSIZE + 1]; /* static so zero filled */
 
-		// 	if(read(fd, buffer, BUFSIZE)){};
-		// 	/* work out the file type and check we support it */
-		// 	buflen = strlen(buffer);
-		// 	fstr = (char *)0;
-		// 	for (i = 0; extensions[i].ext != 0; i++)
-		// 	{
-		// 		len = strlen(extensions[i].ext);
-		// 		if (!strncmp(&buffer[buflen - len], extensions[i].ext, len))
-		// 		{
-		// 			fstr = extensions[i].filetype;
-		// 			break;
-		// 		}
-		// 	}
-		// 	if(bufferQueue.counter==0){
-		// 		struct node newNode;
-		// 		bufferQueue.head = &newNode;
-		// 		bufferQueue.tail = &newNode;
-		// 		bufferQueue.head->next = bufferQueue.tail;
-		// 		bufferQueue.head->call = socketfd;
-		// 		bufferQueue.head->hit = hit;
-		// 	} else if (strcmp(fstr, ".html")) {
-		// 		struct node *temp = bufferQueue.head;
-		// 		struct node newNode;
-		// 		bufferQueue.head = &newNode;
-		// 		bufferQueue.head->next = temp;
-		// 		bufferQueue.head->call = socketfd;
-		// 		bufferQueue.head->hit = hit;
-		// 	} else /*is not a jpg*/ {
-		// 		struct node newNode;
-		// 		bufferQueue.tail->next = &newNode;
-		// 		bufferQueue.tail = bufferQueue.tail->next;
-		// 		bufferQueue.tail->call = socketfd;
-		// 		bufferQueue.tail->hit = hit;
-		// 	}
-		// }
+			if(read(fd, buffer, BUFSIZE)){};
+			/* work out the file type and check we support it */
+			buflen = strlen(buffer);
+			fstr = (char *)0;
+			for (i = 0; extensions[i].ext != 0; i++)
+			{
+				len = strlen(extensions[i].ext);
+				if (!strncmp(&buffer[buflen - len], extensions[i].ext, len))
+				{
+					fstr = extensions[i].filetype;
+					break;
+				}
+			}
+			if(bufferQueue.counter==0){
+				struct node newNode;
+				bufferQueue.head = &newNode;
+				bufferQueue.tail = &newNode;
+				bufferQueue.head->next = bufferQueue.tail;
+				bufferQueue.head->call = socketfd;
+				bufferQueue.head->hit = hit;
+			} else if (strcmp(fstr, ".html")) {
+				struct node *temp = bufferQueue.head;
+				struct node newNode;
+				bufferQueue.head = &newNode;
+				bufferQueue.head->next = temp;
+				bufferQueue.head->call = socketfd;
+				bufferQueue.head->hit = hit;
+			} else /*is not a jpg*/ {
+				struct node newNode;
+				bufferQueue.tail->next = &newNode;
+				bufferQueue.tail = bufferQueue.tail->next;
+				bufferQueue.tail->call = socketfd;
+				bufferQueue.tail->hit = hit;
+			}
+		}
 
-		// if(!strcmp(argv[5], "HPHC")) {
-		// 	int buflen;
-		// 	char *fstr;
-		// 	static char buffer[BUFSIZE + 1]; /* static so zero filled */
+		if(!strcmp(argv[5], "HPHC")) {
+			int buflen;
+			char *fstr;
+			static char buffer[BUFSIZE + 1]; /* static so zero filled */
 
-		// 	if(read(fd, buffer, BUFSIZE)){};
-		// 	/* work out the file type and check we support it */
-		// 	buflen = strlen(buffer);
-		// 	fstr = (char *)0;
-		// 	for (i = 0; extensions[i].ext != 0; i++)
-		// 	{
-		// 		len = strlen(extensions[i].ext);
-		// 		if (!strncmp(&buffer[buflen - len], extensions[i].ext, len))
-		// 		{
-		// 			fstr = extensions[i].filetype;
-		// 			break;
-		// 		}
-		// 	}
-		// 	if(bufferQueue.counter==0){
-		// 		struct node newNode;
-		// 		bufferQueue.head = &newNode;
-		// 		bufferQueue.tail = &newNode;
-		// 		bufferQueue.head->next = bufferQueue.tail;
-		// 		bufferQueue.head->call = socketfd;
-		// 		bufferQueue.head->hit = hit;
-		// 	} else if (!strcmp(fstr, ".html")) {
-		// 		struct node *temp = bufferQueue.head;
-		// 		struct node newNode;
-		// 		bufferQueue.head = &newNode;
-		// 		bufferQueue.head->next = temp;
-		// 		bufferQueue.head->call = socketfd;
-		// 		bufferQueue.head->hit = hit;
-		// 	} else /*is not a jpg*/ {
-		// 		struct node newNode;
-		// 		bufferQueue.tail->next = &newNode;
-		// 		bufferQueue.tail = bufferQueue.tail->next;
-		// 		bufferQueue.tail->call = socketfd;
-		// 		bufferQueue.tail->hit = hit;
-		// 	}
-		// }
+			if(read(fd, buffer, BUFSIZE)){};
+			/* work out the file type and check we support it */
+			buflen = strlen(buffer);
+			fstr = (char *)0;
+			for (i = 0; extensions[i].ext != 0; i++)
+			{
+				len = strlen(extensions[i].ext);
+				if (!strncmp(&buffer[buflen - len], extensions[i].ext, len))
+				{
+					fstr = extensions[i].filetype;
+					break;
+				}
+			}
+			if(bufferQueue.counter==0){
+				struct node newNode;
+				bufferQueue.head = &newNode;
+				bufferQueue.tail = &newNode;
+				bufferQueue.head->next = bufferQueue.tail;
+				bufferQueue.head->call = socketfd;
+				bufferQueue.head->hit = hit;
+			} else if (!strcmp(fstr, ".html")) {
+				struct node *temp = bufferQueue.head;
+				struct node newNode;
+				bufferQueue.head = &newNode;
+				bufferQueue.head->next = temp;
+				bufferQueue.head->call = socketfd;
+				bufferQueue.head->hit = hit;
+			} else /*is not a jpg*/ {
+				struct node newNode;
+				bufferQueue.tail->next = &newNode;
+				bufferQueue.tail = bufferQueue.tail->next;
+				bufferQueue.tail->call = socketfd;
+				bufferQueue.tail->hit = hit;
+			}
+		}
 
 		// if ((pid = fork()) < 0)
 		// {
