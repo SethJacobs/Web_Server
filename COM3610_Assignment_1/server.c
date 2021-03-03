@@ -80,7 +80,7 @@ void logger(int type, char *s1, char *s2, int socket_fd)
 		(void)sprintf(logbuffer, "FORBIDDEN: %s:%s", s1, s2);
 		break;
 	case NOTFOUND:
-		if(write(socket_fd, "HTTP/1.1 404 Not Found\nContent-Length: 136\nConnection: close\nContent-Type: text/html\n\n<html><head>\n<title>404 Not Found</title>\n</head><body>\n<h1>Not Found</h1>\nThe requested URL was not found on this server.\n</body></html>\n", 224)){};
+		if(write(socket_fd, "/1.1 404 Not Found\nContent-Length: 136\nConnection: close\nContent-Type: text/html\n\n<html><head>\n<title>404 Not Found</title>\n</head><body>\n<h1>Not Found</h1>\nThe requested URL was not found on this server.\n</body></html>\n", 224)){};
 		(void)sprintf(logbuffer, "NOT FOUND: %s:%s", s1, s2);
 		break;
 	case LOG:
@@ -190,6 +190,7 @@ void *consumer(void *ptr) {
 			} 
 			printf("AWAKEN!!!!\n");
 			bufferQueue.counter--; /* take item out of buffer */
+			printf("this is the counter: %d", bufferQueue.counter);
 			web(bufferQueue.head->call, bufferQueue.head->hit); /* never returns */
 			printf("Taken care of.\n"); 
 			bufferQueue.head = bufferQueue.head->next;
@@ -340,30 +341,32 @@ int main(int argc, char **argv)
 	{
 		printf("%d ", hit);
 		// if(bufferQueue.counter != 0) continue;
-		printf(" this is the chup listen  ya chup %d ", listenfd);
+		printf(" this is the chup listen  ya chup %d \n", listenfd);
 		length = sizeof(cli_addr);
-		if ((socketfd = accept(listenfd, (struct sockaddr *)&cli_addr, &length)) < 0)
+		if ((socketfd = accept(listenfd, (struct sockaddr *)&cli_addr, &length)) < 0){
+			fprintf(stderr,"error %s\n",strerror(errno));
 			logger(ERROR, "system call", "accept", 0);
+		}
 		
 		// printf("im here");
 		printf("%s", argv[5]);
 		if (!strcmp(argv[5],"FIFO")){
-			// printf("yes eli i did %d", bufferQueue.counter);
-			// if (bufferQueue.counter == 0){
-			// 	struct node newNode;
-			// 	bufferQueue.head = &newNode;
-			// 	bufferQueue.tail = &newNode;
-			// 	bufferQueue.head->next = bufferQueue.tail;
-			// 	bufferQueue.head->call = socketfd;
-			// 	bufferQueue.head->hit = hit;
-			// } else {
-			// 	struct node newNode;
-			// 	bufferQueue.tail->next = &newNode;
-			// 	bufferQueue.tail = bufferQueue.tail->next;
-			// 	bufferQueue.tail->call = socketfd;
-			// 	bufferQueue.tail->hit = hit;
-			// }
-			// bufferQueue.counter++;
+			printf("yes eli i did %d", bufferQueue.counter);
+			if (bufferQueue.counter == 0){
+				struct node newNode;
+				bufferQueue.head = &newNode;
+				bufferQueue.tail = &newNode;
+				bufferQueue.head->next = bufferQueue.tail;
+				bufferQueue.head->call = socketfd;
+				bufferQueue.head->hit = hit;
+			} else {
+				struct node newNode;
+				bufferQueue.tail->next = &newNode;
+				bufferQueue.tail = bufferQueue.tail->next;
+				bufferQueue.tail->call = socketfd;
+				bufferQueue.tail->hit = hit;
+			}
+			bufferQueue.counter++;
 			// printf(" This is the counter: %d", bufferQueue.counter);
 			pthread_cond_signal(&condc);
 		}
@@ -466,8 +469,8 @@ int main(int argc, char **argv)
 		// 		(void)close(socketfd);
 		// 	}
 		// }
-		(void)close(socketfd);
-		(void)close(listenfd);
+		// (void)close(socketfd);
+		// (void)close(listenfd);
 
 	}
 	pthread_mutex_destroy(&the_mutex);
