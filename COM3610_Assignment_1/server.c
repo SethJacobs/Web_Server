@@ -178,7 +178,7 @@ void web(int fd, int hit)
 	}
 	sleep(1); /* allow socket to drain before signalling the socket is closed */
 	close(fd);
-	exit(1);
+	// exit(1);
 }
 void *consumer(void *ptr) {
 	while(1){
@@ -190,8 +190,10 @@ void *consumer(void *ptr) {
 			} 
 			printf("AWAKEN!!!!\n");
 			printf("%d", bufferQueue.counter);
+			sleep(5);
 			bufferQueue.counter--; /* take item out of buffer */
 			printf("this is the counter: %d", bufferQueue.counter);
+			
 			web(bufferQueue.head->call, bufferQueue.head->hit); /* never returns */
 			printf("Taken care of.\n"); 
 			bufferQueue.head = bufferQueue.head->next;
@@ -225,8 +227,8 @@ int main(int argc, char **argv)
 {
 	printf("%d ", argc);
 	
-	int i, port, listenfd, socketfd, hit, /*fd,*/ foo;
-	// long len;
+	int i, port, listenfd, socketfd, hit, foo;
+	long len;
 	socklen_t length;
 	static struct sockaddr_in cli_addr;	 /* static = initialised to zeros */
 	static struct sockaddr_in serv_addr;
@@ -379,7 +381,7 @@ int main(int argc, char **argv)
 			char *fstr;
 			static char buffer[BUFSIZE + 1]; /* static so zero filled */
 
-			if(read(fd, buffer, BUFSIZE)){};
+			if(read(socketfd, buffer, BUFSIZE)){};
 			/* work out the file type and check we support it */
 			buflen = strlen(buffer);
 			fstr = (char *)0;
@@ -420,7 +422,7 @@ int main(int argc, char **argv)
 			char *fstr;
 			static char buffer[BUFSIZE + 1]; /* static so zero filled */
 
-			if(read(fd, buffer, BUFSIZE)){};
+			if(read(socketfd, buffer, BUFSIZE)){};
 			/* work out the file type and check we support it */
 			buflen = strlen(buffer);
 			fstr = (char *)0;
