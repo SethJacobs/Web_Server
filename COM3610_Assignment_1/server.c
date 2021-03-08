@@ -114,7 +114,7 @@ void logger(int type, char *s1, char *s2, int socket_fd)
 }
 
 /* this is a child web server process, so we can exit on errors */
-void web(int fd, int hit, int arrivalCount, int arrivalTime, int dispatchTime, int dispatchCount)
+void web(int fd, int hit, int arrivalCount, int arrivalTime, int dispatchTime, int dispatchCount, struct Thread* thread)
 {
 	struct timeval current_time;
 	int j, file_fd, buflen, complete_time;
@@ -180,6 +180,15 @@ void web(int fd, int hit, int arrivalCount, int arrivalTime, int dispatchTime, i
 	(void)sprintf(buffer, "HTTP/1.1 200 OK\nServer: nweb/%d.0\nContent-Length: %ld\nConnection: close\nContent-Type: %s\n\n", VERSION, len, fstr); /* Header + a blank line */
 	logger(LOG, "Header", buffer, hit);
 	if(write(fd, buffer, strlen(buffer))){};
+
+	if (!strcmp(fstr,".html")) {
+		thread->html_request++;
+	}
+	if (!strcmp(fstr,".jpg") || !strcmp(fstr,".png") || !strcmp(fstr,".gif")){
+		thread->img_request++;
+	}
+	thread->http_request++;
+
 	
 	completed_threads++;
 	gettimeofday(&current_time, NULL);
@@ -200,6 +209,10 @@ void web(int fd, int hit, int arrivalCount, int arrivalTime, int dispatchTime, i
 	printf("X-stat-req-complete-count: %d\n", completed_threads);
 	printf("X-stat-req-complete-time: %d\n", complete_time);
 	printf("X-stat-req-age: %d\n", (dispatchCount - arrivalCount));
+	printf("X-stat-thread-id: %d\n", thread->id);
+	printf("X-stat-thread-count: %d\n", thread->http_request);
+	printf("X-stat-thread-html: %d\n", thread->html_request);
+	printf("X-stat-thread-image: %d\n", thread->img_request);
 
 	
 	/**
@@ -218,7 +231,7 @@ void web(int fd, int hit, int arrivalCount, int arrivalTime, int dispatchTime, i
 	close(fd);
 	// exit(1);
 }
-void *consumer(void *ptr) {
+void *consumer(void *thread) {
 	struct timeval current_time;
 	int dispatch_time, dispatchCount;
 	while(1){
@@ -233,7 +246,7 @@ void *consumer(void *ptr) {
 		bufferQueue.counter--; /* take item out of buffer */
 		printf("this is the counter: %d\n", bufferQueue.counter);
 
-		web(bufferQueue.head->call, bufferQueue.head->hit, bufferQueue.head->arrival_count, bufferQueue.head->arrival_time, dispatch_time, dispatchCount); /* never returns */
+		web(bufferQueue.head->call, bufferQueue.head->hit, bufferQueue.head->arrival_count, bufferQueue.head->arrival_time, dispatch_time, dispatchCount, thread); /* never returns */
 		bufferQueue.head = bufferQueue.head->next;
 		pthread_mutex_unlock(&the_mutex); /* release access to buffer */
 	}
@@ -273,7 +286,7 @@ int main(int argc, char **argv)
 		threads[i].http_request = 0;
 		threads[i].img_request = 0;
 		threads[i].id = i;
-		pthread_create(&pthread, NULL, consumer, 0);
+		pthread_create(&pthread, NULL, consumer, threads+i);
 
 	}
 
