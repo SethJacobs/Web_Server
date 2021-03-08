@@ -10,6 +10,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <pthread.h>
+#include <sys/time.h>
 #define VERSION 23
 #define BUFSIZE 8096
 #define ERROR 42
@@ -20,8 +21,9 @@
 pthread_mutex_t the_mutex;
 pthread_cond_t condc;
 int buffer = 0;
-int init_threads;
-int MAX;
+int init_threads, thread_count, completed_threads, MAX, dispatch_count;
+time_t startTime;
+suseconds_t otherStart;
 char *order;
 struct queue bufferQueue;
 
@@ -50,6 +52,8 @@ struct node
 	struct node *next;
 	int call;
 	int hit;
+	int arrival_time;
+	int arrival_count;
 };
 
 struct queue
@@ -58,6 +62,17 @@ struct queue
 	struct node *tail;
 	int counter;
 };
+
+struct Thread
+{
+	pthread_t thread;
+	int id;
+	int http_request;
+	int html_request;
+	int img_request;
+};
+
+// struct Thread *threads;
 
 
 
@@ -99,9 +114,10 @@ void logger(int type, char *s1, char *s2, int socket_fd)
 }
 
 /* this is a child web server process, so we can exit on errors */
-void web(int fd, int hit)
+void web(int fd, int hit, int arrivalCount, int arrivalTime, int dispatchTime, int dispatchCount)
 {
-	int j, file_fd, buflen;
+	struct timeval current_time;
+	int j, file_fd, buflen, complete_time;
 	long i, ret, len;
 	char *fstr;
 	static char buffer[BUFSIZE + 1]; /* static so zero filled */
@@ -164,12 +180,40 @@ void web(int fd, int hit)
 	(void)sprintf(buffer, "HTTP/1.1 200 OK\nServer: nweb/%d.0\nContent-Length: %ld\nConnection: close\nContent-Type: %s\n\n", VERSION, len, fstr); /* Header + a blank line */
 	logger(LOG, "Header", buffer, hit);
 	if(write(fd, buffer, strlen(buffer))){};
-
+	
+	completed_threads++;
+	gettimeofday(&current_time, NULL);
+	complete_time = (current_time.tv_sec * 1000000 + current_time.tv_usec) - 
+					(startTime * 1000000 + otherStart);
 	/* Send the statistical headers described in the paper, example below
     
     (void)sprintf(buffer,"X-stat-req-arrival-count: %d\r\n", xStatReqArrivalCount);
 	(void)write(fd,buffer,strlen(buffer));
     */
+
+	//Server Statistics
+	//Thread Arrical Count
+	printf("X-stat-req-arrival-count: %d\n", arrivalCount);
+	printf("X-stat-req-arrival-time: %d\n", arrivalTime);
+	printf("X-stat-req-dispatch-count: %d\n", dispatchCount);
+	printf("X-stat-req-dispatch-time: %d\n", dispatchTime);
+	printf("X-stat-req-complete-count: %d\n", completed_threads);
+	printf("X-stat-req-complete-time: %d\n", complete_time);
+	printf("X-stat-req-age: %d\n", (dispatchCount - arrivalCount));
+
+	
+	/**
+	 * todo:
+	 * X-stat-req-age
+	 * X-stat-req-dispatch-count
+	 * All the thread specific attributes
+	 */
+	//Amount of time elapsed
+	gettimeofday(&current_time, NULL);
+	printf("Arrival Time of Current Thread: %ld micro seconds after the start of the server\n", 
+		((current_time.tv_sec * 1000000 + current_time.tv_usec) - 
+		(startTime * 1000000 + otherStart)));
+	//
 
 	/* send file in 8KB block - last block may be smaller */
 	while ((ret = read(file_fd, buffer, BUFSIZE)) > 0)
@@ -181,89 +225,66 @@ void web(int fd, int hit)
 	// exit(1);
 }
 void *consumer(void *ptr) {
+	struct timeval current_time;
+	int dispatch_time, dispatchCount;
 	while(1){
 		printf("you guys done gone and consumed your souls");
 		pthread_mutex_lock(&the_mutex); /* get exclusive access to buffer */
-	// 	// if(!strcmp(order,"FIFO") || !strcmp(order, "ANY") || !strcmp(order, "HPIC")){
-			if (bufferQueue.counter == 0){
-				pthread_cond_wait(&condc, &the_mutex);
-			} 
-			printf("AWAKEN!!!!\n");
-			printf("%d", bufferQueue.counter);
-			sleep(5);
-			bufferQueue.counter--; /* take item out of buffer */
-			printf("this is the counter: %d", bufferQueue.counter);
-			
-			web(bufferQueue.head->call, bufferQueue.head->hit); /* never returns */
-			printf("Taken care of.\n"); 
-			bufferQueue.head = bufferQueue.head->next;
-		// }
+		if (bufferQueue.counter == 0){
+			pthread_cond_wait(&condc, &the_mutex);
+		}
+		dispatchCount = dispatch_count++;
+		gettimeofday(&current_time, NULL);
+		dispatch_time = (current_time.tv_sec * 1000000 + current_time.tv_usec) - 
+						(startTime * 1000000 + otherStart);
+		bufferQueue.counter--; /* take item out of buffer */
+		printf("this is the counter: %d", bufferQueue.counter);
+
+		web(bufferQueue.head->call, bufferQueue.head->hit, bufferQueue.head->arrival_count, bufferQueue.head->arrival_time, dispatch_time, dispatchCount); /* never returns */
+		printf("Taken care of.\n"); 
+		bufferQueue.head = bufferQueue.head->next;
 		pthread_mutex_unlock(&the_mutex); /* release access to buffer */
-	// 	pthread_exit(0);
 	}
 	pthread_exit(0);
 }
-// void *producer(void *ptr) {
-// 	int i;
-// 	printf("you guys done gone and produced your souls %d", init_threads);
-// 	for (i = 1; i < init_threads; i++) {
-// 		pthread_t con;
-// 		printf("%d", i);
-// 		pthread_mutex_lock(&the_mutex); /* get exclusive access to buffer */
-// 		// while (buffer != 0) pthread_cond_wait(&condp, &the_mutex);
-// 		// buffer = i; /* put item in buffer */
-// 		// pthread_cond_signal(&condc); /* wake up consumer */
-		
-// 		pthread_create(&con, 0, consumer, 0);
-// 		pthread_join(con, 0);
-// 		pthread_mutex_unlock(&the_mutex); /* release access to buffer */
-// 	}
-// 	pthread_exit(0);
-// }
-
-
 
 int main(int argc, char **argv)
 {
-	printf("%d ", argc);
-	
+	struct timeval start_time, current_time;
 	int i, port, listenfd, socketfd, hit, foo;
 	long len;
 	socklen_t length;
 	static struct sockaddr_in cli_addr;	 /* static = initialised to zeros */
 	static struct sockaddr_in serv_addr;
-
 	
 	//spluge
-	
+	gettimeofday(&start_time, NULL);
+	startTime = start_time.tv_sec;
+	otherStart = start_time.tv_usec;
+	printf("%d ", argc);
+	thread_count = 0;
+	completed_threads = 0;
 	MAX = atoi(argv[4]);
 	init_threads = atoi(argv[3]);
 	order = argv[5];
 	bufferQueue.counter = 0;
-	pthread_t threads[init_threads]; 
+	struct Thread *threads[init_threads];
+	// threads = (struct Thread*)malloc(sizeof(struct Thread) * init_threads);
+	// pthread_t threads[init_threads]; 
 	printf("1: %s, 2: %s, 3: %s, 4: %d, 5: %d, 6: %s", argv[0], argv[1], argv[2], atoi(argv[3]), MAX, order);
 	
 	pthread_mutex_init(&the_mutex, 0);
 	pthread_cond_init(&condc, 0);
-	// pthread_cond_init(&condp, 0);
-	
-	
-	// pthread_create(&pro, 0, producer, 0);
-	// pthread_join(pro, 0);
-	
-	// pthread_cond_destroy(&condc);
-	// pthread_cond_destroy(&condp);
-	/* static = initialised to zeros */
 	
 	for(int i = 0; i < init_threads; i++){
-		pthread_create(&threads[i], 0, consumer, 0);
+		pthread_t pthread;
+		threads[i]->id = i;
+		threads[i]->thread = pthread;
+		threads[i]->html_request = 0;
+		threads[i]->http_request = 0;
+		threads[i]->img_request = 0;
+		pthread_create(&pthread, 0, consumer, 0);
 	}
-	// for(int i = 0; i < init_threads; i++){
-	// 	pthread_join(threads[i], 0);
-	// }
-	// struct node *newNode;
-	// bufferQueue.head = newNode;
-	// bufferQueue.head->next = newNode;
 
 	if (argc != 6 || !strcmp(argv[1], "-?"))
 	{
@@ -297,22 +318,6 @@ int main(int argc, char **argv)
 		exit(4);
 	}
 
-	// producer(NULL);
-
-	// pthread_cond_wait(&condc,&the_mutex);
-	
-
-	// /* Become deamon + unstopable and no zombies children (= no wait()) */
-	// if (fork() != 0)
-	// 	return 0;					/* parent returns OK to shell */
-	// (void)signal(SIGCHLD, SIG_IGN); /* ignore child death */
-	// (void)signal(SIGHUP, SIG_IGN);	/* ignore terminal hangups */
-	// for (i = 0; i < 32; i++)
-	// 	(void)close(i); /* close open files */
-	// (void)setpgrp();	/* break away from process group */
-	// logger(LOG, "nweb starting", argv[1], getpid());
-	/* setup the network socket */
-
 	//ERRORS
 	if ((listenfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
 		logger(ERROR, "system call", "socket", 0);
@@ -335,10 +340,6 @@ int main(int argc, char **argv)
 	if (listen(listenfd, 64) < 0)
 		logger(ERROR, "system call", "listen", 0);
 
-	// printf("%ls %", &socketfd, &cli_addr);
-
-	// if(length || len || fd || hit){}
-
 	//RUN THE SERVER WITH FOREVER LOOP
 	for (hit = 1;; hit++)
 	{
@@ -350,10 +351,13 @@ int main(int argc, char **argv)
 			fprintf(stderr,"error %s\n",strerror(errno));
 			logger(ERROR, "system call", "accept", 0);
 		}
+		gettimeofday(&current_time, NULL);
+		int arrivalTime = (current_time.tv_sec * 1000000 + current_time.tv_usec) - 
+						  (startTime * 1000000 + otherStart);
 		
 		// printf("im here");
 		printf("%s", argv[5]);
-		if (!strcmp(argv[5],"FIFO")){
+		if (!strcmp(argv[5],"FIFO") || !strcmp(argv[5],"ANY")){
 			printf("yes eli i did %d ", bufferQueue.counter);
 			if (bufferQueue.counter == 0){
 				printf("true");
@@ -363,12 +367,16 @@ int main(int argc, char **argv)
 				bufferQueue.head->next = bufferQueue.tail;
 				bufferQueue.head->call = socketfd;
 				bufferQueue.head->hit = hit;
+				bufferQueue.head->arrival_time = arrivalTime;
+				bufferQueue.head->arrival_count = thread_count++;
 		} else {
 				struct node newNode;
 				bufferQueue.tail->next = &newNode;
 				bufferQueue.tail = bufferQueue.tail->next;
 				bufferQueue.tail->call = socketfd;
 				bufferQueue.tail->hit = hit;
+				bufferQueue.tail->arrival_time = arrivalTime;
+				bufferQueue.tail->arrival_count = thread_count++;
 			}
 
 			bufferQueue.counter++;
@@ -401,6 +409,8 @@ int main(int argc, char **argv)
 				bufferQueue.head->next = bufferQueue.tail;
 				bufferQueue.head->call = socketfd;
 				bufferQueue.head->hit = hit;
+				bufferQueue.head->arrival_time = arrivalTime;
+				bufferQueue.head->arrival_count = thread_count++;
 			} else if (strcmp(fstr, ".html")) {
 				struct node *temp = bufferQueue.head;
 				struct node newNode;
@@ -408,12 +418,16 @@ int main(int argc, char **argv)
 				bufferQueue.head->next = temp;
 				bufferQueue.head->call = socketfd;
 				bufferQueue.head->hit = hit;
+				bufferQueue.head->arrival_time = arrivalTime;
+				bufferQueue.head->arrival_count = thread_count++;
 			} else /*is not a jpg*/ {
 				struct node newNode;
 				bufferQueue.tail->next = &newNode;
 				bufferQueue.tail = bufferQueue.tail->next;
 				bufferQueue.tail->call = socketfd;
 				bufferQueue.tail->hit = hit;
+				bufferQueue.tail->arrival_time = arrivalTime;
+				bufferQueue.tail->arrival_count = thread_count++;
 			}
 		}
 
@@ -442,6 +456,8 @@ int main(int argc, char **argv)
 				bufferQueue.head->next = bufferQueue.tail;
 				bufferQueue.head->call = socketfd;
 				bufferQueue.head->hit = hit;
+				bufferQueue.head->arrival_time = arrivalTime;
+				bufferQueue.head->arrival_count = thread_count++;
 			} else if (!strcmp(fstr, ".html")) {
 				struct node *temp = bufferQueue.head;
 				struct node newNode;
@@ -449,12 +465,16 @@ int main(int argc, char **argv)
 				bufferQueue.head->next = temp;
 				bufferQueue.head->call = socketfd;
 				bufferQueue.head->hit = hit;
+				bufferQueue.head->arrival_time = arrivalTime;
+				bufferQueue.head->arrival_count = thread_count++;
 			} else /*is not a jpg*/ {
 				struct node newNode;
 				bufferQueue.tail->next = &newNode;
 				bufferQueue.tail = bufferQueue.tail->next;
 				bufferQueue.tail->call = socketfd;
 				bufferQueue.tail->hit = hit;
+				bufferQueue.tail->arrival_time = arrivalTime;
+				bufferQueue.tail->arrival_count = thread_count++;
 			}
 		}
 
