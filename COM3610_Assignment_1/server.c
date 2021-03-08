@@ -181,10 +181,10 @@ void web(int fd, int hit, int arrivalCount, int arrivalTime, int dispatchTime, i
 	logger(LOG, "Header", buffer, hit);
 	if(write(fd, buffer, strlen(buffer))){};
 
-	if (!strcmp(fstr,".html")) {
+	if (!strcmp(fstr,"text/html")) {
 		thread->html_request++;
 	}
-	if (!strcmp(fstr,".jpg") || !strcmp(fstr,".png") || !strcmp(fstr,".gif")){
+	if (!strcmp(fstr,"image/jpg") || !strcmp(fstr,"image/png") || !strcmp(fstr,"image/gif")){
 		thread->img_request++;
 	}
 	thread->http_request++;
