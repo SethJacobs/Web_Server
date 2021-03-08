@@ -72,7 +72,7 @@ struct Thread
 	int img_request;
 };
 
-// struct Thread *threads;
+struct Thread* threads = NULL;
 
 
 
@@ -183,8 +183,8 @@ void web(int fd, int hit, int arrivalCount, int arrivalTime, int dispatchTime, i
 	
 	completed_threads++;
 	gettimeofday(&current_time, NULL);
-	complete_time = (current_time.tv_sec * 1000000 + current_time.tv_usec) - 
-					(startTime * 1000000 + otherStart);
+	complete_time = (current_time.tv_sec * 1000 + current_time.tv_usec) - 
+					(startTime * 1000 + otherStart);
 	/* Send the statistical headers described in the paper, example below
     
     (void)sprintf(buffer,"X-stat-req-arrival-count: %d\r\n", xStatReqArrivalCount);
@@ -208,12 +208,6 @@ void web(int fd, int hit, int arrivalCount, int arrivalTime, int dispatchTime, i
 	 * X-stat-req-dispatch-count
 	 * All the thread specific attributes
 	 */
-	//Amount of time elapsed
-	gettimeofday(&current_time, NULL);
-	printf("Arrival Time of Current Thread: %ld micro seconds after the start of the server\n", 
-		((current_time.tv_sec * 1000000 + current_time.tv_usec) - 
-		(startTime * 1000000 + otherStart)));
-	//
 
 	/* send file in 8KB block - last block may be smaller */
 	while ((ret = read(file_fd, buffer, BUFSIZE)) > 0)
@@ -228,20 +222,18 @@ void *consumer(void *ptr) {
 	struct timeval current_time;
 	int dispatch_time, dispatchCount;
 	while(1){
-		printf("you guys done gone and consumed your souls");
 		pthread_mutex_lock(&the_mutex); /* get exclusive access to buffer */
 		if (bufferQueue.counter == 0){
 			pthread_cond_wait(&condc, &the_mutex);
 		}
 		dispatchCount = dispatch_count++;
 		gettimeofday(&current_time, NULL);
-		dispatch_time = (current_time.tv_sec * 1000000 + current_time.tv_usec) - 
-						(startTime * 1000000 + otherStart);
+		dispatch_time = (current_time.tv_sec * 1000 + current_time.tv_usec) - 
+						(startTime * 1000 + otherStart);
 		bufferQueue.counter--; /* take item out of buffer */
-		printf("this is the counter: %d", bufferQueue.counter);
+		printf("this is the counter: %d\n", bufferQueue.counter);
 
 		web(bufferQueue.head->call, bufferQueue.head->hit, bufferQueue.head->arrival_count, bufferQueue.head->arrival_time, dispatch_time, dispatchCount); /* never returns */
-		printf("Taken care of.\n"); 
 		bufferQueue.head = bufferQueue.head->next;
 		pthread_mutex_unlock(&the_mutex); /* release access to buffer */
 	}
@@ -268,22 +260,21 @@ int main(int argc, char **argv)
 	init_threads = atoi(argv[3]);
 	order = argv[5];
 	bufferQueue.counter = 0;
-	struct Thread *threads[init_threads];
-	// threads = (struct Thread*)malloc(sizeof(struct Thread) * init_threads);
+	threads = calloc(init_threads, sizeof(struct Thread));
 	// pthread_t threads[init_threads]; 
-	printf("1: %s, 2: %s, 3: %s, 4: %d, 5: %d, 6: %s", argv[0], argv[1], argv[2], atoi(argv[3]), MAX, order);
+	// printf("1: %s, 2: %s, 3: %s, 4: %d, 5: %d, 6: %s", argv[0], argv[1], argv[2], atoi(argv[3]), MAX, order);
 	
 	pthread_mutex_init(&the_mutex, 0);
 	pthread_cond_init(&condc, 0);
-	
-	for(int i = 0; i < init_threads; i++){
+	for(i = 0; i < init_threads; i++){
 		pthread_t pthread;
-		threads[i]->id = i;
-		threads[i]->thread = pthread;
-		threads[i]->html_request = 0;
-		threads[i]->http_request = 0;
-		threads[i]->img_request = 0;
-		pthread_create(&pthread, 0, consumer, 0);
+		threads[i].thread = pthread;
+		threads[i].html_request = 0;
+		threads[i].http_request = 0;
+		threads[i].img_request = 0;
+		threads[i].id = i;
+		pthread_create(&pthread, NULL, consumer, 0);
+
 	}
 
 	if (argc != 6 || !strcmp(argv[1], "-?"))
@@ -343,24 +334,20 @@ int main(int argc, char **argv)
 	//RUN THE SERVER WITH FOREVER LOOP
 	for (hit = 1;; hit++)
 	{
-		printf("%d ", hit);
 		// if(bufferQueue.counter != 0) continue;
-		printf(" this is the chup listen  ya chup %d \n", listenfd);
 		length = sizeof(cli_addr);
 		if ((socketfd = accept(listenfd, (struct sockaddr *)&cli_addr, &length)) < 0){
 			fprintf(stderr,"error %s\n",strerror(errno));
 			logger(ERROR, "system call", "accept", 0);
 		}
 		gettimeofday(&current_time, NULL);
-		int arrivalTime = (current_time.tv_sec * 1000000 + current_time.tv_usec) - 
-						  (startTime * 1000000 + otherStart);
+		int arrivalTime = (current_time.tv_sec * 1000 + current_time.tv_usec) - 
+						  (startTime * 1000 + otherStart);
 		
 		// printf("im here");
 		printf("%s", argv[5]);
 		if (!strcmp(argv[5],"FIFO") || !strcmp(argv[5],"ANY")){
-			printf("yes eli i did %d ", bufferQueue.counter);
 			if (bufferQueue.counter == 0){
-				printf("true");
 				struct node newNode;
 				bufferQueue.head = &newNode;
 				bufferQueue.tail = &newNode;
@@ -380,7 +367,6 @@ int main(int argc, char **argv)
 			}
 
 			bufferQueue.counter++;
-			printf(" This is the counter: %d", bufferQueue.counter);
 			pthread_cond_signal(&condc);
 		}
 
