@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <semaphore.h>
 
 /* Network */
 #include <netdb.h>
@@ -14,8 +15,7 @@
 #define PORT 5003
 #define IP_ADDRESS 157.245.133.201
 
-pthread_mutex_t the_mutex;
-pthread_cond_t condc;
+sem_t semaphore;
 pthread_t* threads;
 int clientfd;
 char* file_name;
@@ -78,9 +78,10 @@ int main(int argc, char **argv){
 		fprintf(stderr, "USAGE: ./httpclient <hostname> <port> <threads> <schedalg> <request path> <optional secondary request path>\n");
 		return 1;
 	}
-	pthread_mutex_init(&the_mutex, 0);
-	pthread_cond_init(&condc, 0);
 	int threadNum = atoi(argv[3]);
+	if(argv[4] == "FIFO") sem_init(&semaphore, 0, 1);
+	else sem_init(&semaphore, 0, threadNum);
+	
 	threads = calloc(threadNum, sizeof(pthread_t));
 	clientfd = establishConnection(getHostInfo(argv[1], argv[2]));
 	file_name = argv[5];
@@ -90,19 +91,13 @@ int main(int argc, char **argv){
 				argv[1], argv[2]);
 		return 3;
 	}
-	if(argc == 7){
-		file_name_2 = argv[6];
-		for (int i = 0; i < threadNum; i++)
-		{
-			if(i % 2 == 0) pthread_create(threads+i, NULL, multithreaded, threads+i);
-			else pthread_create(threads+i, NULL, multithreaded2, threads+i);
-		}
-	}else{
-		for (int i = 0; i < threadNum; i++)
-		{
-			pthread_create(threads+i, NULL, multithreaded, threads+i);
-		}
+	if(argc == 7) file_name_2 = argv[6];
+	for (int i = 0; i < threadNum; i++)
+	{
+		if(i % 2 == 1 && argc == 7) pthread_create(threads+i, NULL, multithreaded, file_name_2);
+		else pthread_create(threads+i, NULL, multithreaded, file_name);
 	}
+	sem_destroy(&semaphore);
 	return 0;
 }
 
@@ -110,20 +105,9 @@ void *multithreaded(void *thread) {
 	char buf[BUF_SIZE];
 	// Establish connection with <hostname>:<port>
 	// Send GET request > stdout
+	sem_wait(&semaphore);
 	GET(clientfd, file_name);
-	while (recv(clientfd, buf, BUF_SIZE, 0) > 0) {
-		fputs(buf, stdout);
-		memset(buf, 0, BUF_SIZE);
-	}
-	close(clientfd);
-	pthread_exit(0);
-}
-
-void *multithreaded2(void *thread) {
-	char buf[BUF_SIZE];
-	// Establish connection with <hostname>:<port>
-	// Send GET request > stdout
-	GET(clientfd, file_name_2);
+	sem_post(&semaphore);
 	while (recv(clientfd, buf, BUF_SIZE, 0) > 0) {
 		fputs(buf, stdout);
 		memset(buf, 0, BUF_SIZE);
