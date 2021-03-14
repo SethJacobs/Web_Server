@@ -199,20 +199,52 @@ void web(int fd, int hit, int arrivalCount, int arrivalTime, int dispatchTime, i
     (void)sprintf(buffer,"X-stat-req-arrival-count: %d\r\n", xStatReqArrivalCount);
 	(void)write(fd,buffer,strlen(buffer));
     */
-
+   	(void)sprintf(buffer,"X-stat-req-arrival-count: %d\r\n", arrivalCount);
+	logger(LOG, "X-stat-req-arrival-count", buffer, hit);
+	(void)write(fd,buffer,strlen(buffer));
+	(void)sprintf(buffer,"X-stat-req-arrival-time: %d\r\n", arrivalTime);
+	logger(LOG, "X-stat-req-arrival-time", buffer, hit);
+	(void)write(fd,buffer,strlen(buffer));
+	(void)sprintf(buffer,"X-stat-req-dispatch-count: %d\r\n", dispatchCount);
+	logger(LOG, "X-stat-req-dispatch-count", buffer, hit);
+	(void)write(fd,buffer,strlen(buffer));
+	(void)sprintf(buffer,"X-stat-req-dispatch-time: %d\r\n", dispatchTime);
+	logger(LOG, "X-stat-req-dispatch-time", buffer, hit);
+	(void)write(fd,buffer,strlen(buffer));
+	(void)sprintf(buffer,"X-stat-req-complete-count: %d\r\n", completed_threads);
+	logger(LOG, "X-stat-req-complete-count", buffer, hit);
+	(void)write(fd,buffer,strlen(buffer));
+	(void)sprintf(buffer,"X-stat-req-complete-time: %d\r\n", complete_time);
+	logger(LOG, "X-stat-req-complete-time", buffer, hit);
+	(void)write(fd,buffer,strlen(buffer));
+	(void)sprintf(buffer,"X-stat-req-age: %d\r\n", (dispatchCount - arrivalCount));
+	logger(LOG, "X-stat-req-age", buffer, hit);
+	(void)write(fd,buffer,strlen(buffer));
+	(void)sprintf(buffer,"X-stat-thread-id: %d\r\n", thread->id);
+	logger(LOG, "X-stat-thread-id", buffer, hit);
+	(void)write(fd,buffer,strlen(buffer));
+	(void)sprintf(buffer,"X-stat-thread-count: %d\r\n", thread->http_request);
+	logger(LOG, "X-stat-req-thread-count", buffer, hit);
+	(void)write(fd,buffer,strlen(buffer));
+	(void)sprintf(buffer,"X-stat-thread-html: %d\r\n", thread->html_request);
+	logger(LOG, "X-stat-req-thread-html", buffer, hit);
+	(void)write(fd,buffer,strlen(buffer));
+	(void)sprintf(buffer,"X-stat-thread-image: %d\r\n", thread->img_request);
+	logger(LOG, "X-stat-req-thread-image", buffer, hit);
+	(void)write(fd,buffer,strlen(buffer));
 	//Server Statistics
 	//Thread Arrical Count
-	printf("X-stat-req-arrival-count: %d\n", arrivalCount);
-	printf("X-stat-req-arrival-time: %d\n", arrivalTime);
-	printf("X-stat-req-dispatch-count: %d\n", dispatchCount);
-	printf("X-stat-req-dispatch-time: %d\n", dispatchTime);
-	printf("X-stat-req-complete-count: %d\n", completed_threads);
-	printf("X-stat-req-complete-time: %d\n", complete_time);
-	printf("X-stat-req-age: %d\n", (dispatchCount - arrivalCount));
-	printf("X-stat-thread-id: %d\n", thread->id);
-	printf("X-stat-thread-count: %d\n", thread->http_request);
-	printf("X-stat-thread-html: %d\n", thread->html_request);
-	printf("X-stat-thread-image: %d\n", thread->img_request);
+	// printf("X-stat-req-arrival-count: %d\n", arrivalCount);
+	// printf("X-stat-req-arrival-time: %d\n", arrivalTime);
+	// printf("X-stat-req-dispatch-count: %d\n", dispatchCount);
+	// printf("X-stat-req-dispatch-time: %d\n", dispatchTime);
+	// printf("X-stat-req-complete-count: %d\n", completed_threads);
+	// printf("X-stat-req-complete-time: %d\n", complete_time);
+	// printf("X-stat-req-age: %d\n", (dispatchCount - arrivalCount));
+	// printf("X-stat-thread-id: %d\n", thread->id);
+	// printf("X-stat-thread-count: %d\n", thread->http_request);
+	// printf("X-stat-thread-html: %d\n", thread->html_request);
+	// printf("X-stat-thread-image: %d\n", thread->img_request);
 
 	
 	/**
@@ -245,7 +277,6 @@ void *consumer(void *thread) {
 						(startTime * 1000 + otherStart);
 		bufferQueue.counter--; /* take item out of buffer */
 		printf("this is the counter: %d\n", bufferQueue.counter);
-
 		web(bufferQueue.head->call, bufferQueue.head->hit, bufferQueue.head->arrival_count, bufferQueue.head->arrival_time, dispatch_time, dispatchCount, thread); /* never returns */
 		bufferQueue.head = bufferQueue.head->next;
 		pthread_mutex_unlock(&the_mutex); /* release access to buffer */
@@ -262,7 +293,6 @@ int main(int argc, char **argv)
 	static struct sockaddr_in cli_addr;	 /* static = initialised to zeros */
 	static struct sockaddr_in serv_addr;
 	
-	//spluge
 	gettimeofday(&start_time, NULL);
 	startTime = start_time.tv_sec;
 	otherStart = start_time.tv_usec;
