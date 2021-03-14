@@ -201,37 +201,37 @@ void web(int fd, int hit, int arrivalCount, int arrivalTime, int dispatchTime, i
     */
    	(void)sprintf(buffer,"X-stat-req-arrival-count: %d\r\n", arrivalCount);
 	logger(LOG, "X-stat-req-arrival-count", buffer, hit);
-	(void)write(fd,buffer,strlen(buffer));
+	if(write(fd, buffer, strlen(buffer))){};
 	(void)sprintf(buffer,"X-stat-req-arrival-time: %d\r\n", arrivalTime);
 	logger(LOG, "X-stat-req-arrival-time", buffer, hit);
-	(void)write(fd,buffer,strlen(buffer));
+	if(write(fd, buffer, strlen(buffer))){};
 	(void)sprintf(buffer,"X-stat-req-dispatch-count: %d\r\n", dispatchCount);
 	logger(LOG, "X-stat-req-dispatch-count", buffer, hit);
-	(void)write(fd,buffer,strlen(buffer));
+	if(write(fd, buffer, strlen(buffer))){};
 	(void)sprintf(buffer,"X-stat-req-dispatch-time: %d\r\n", dispatchTime);
 	logger(LOG, "X-stat-req-dispatch-time", buffer, hit);
-	(void)write(fd,buffer,strlen(buffer));
+	if(write(fd, buffer, strlen(buffer))){};
 	(void)sprintf(buffer,"X-stat-req-complete-count: %d\r\n", completed_threads);
 	logger(LOG, "X-stat-req-complete-count", buffer, hit);
-	(void)write(fd,buffer,strlen(buffer));
+	if(write(fd, buffer, strlen(buffer))){};
 	(void)sprintf(buffer,"X-stat-req-complete-time: %d\r\n", complete_time);
 	logger(LOG, "X-stat-req-complete-time", buffer, hit);
-	(void)write(fd,buffer,strlen(buffer));
+	if(write(fd, buffer, strlen(buffer))){};
 	(void)sprintf(buffer,"X-stat-req-age: %d\r\n", (dispatchCount - arrivalCount));
 	logger(LOG, "X-stat-req-age", buffer, hit);
-	(void)write(fd,buffer,strlen(buffer));
+	if(write(fd, buffer, strlen(buffer))){};
 	(void)sprintf(buffer,"X-stat-thread-id: %d\r\n", thread->id);
 	logger(LOG, "X-stat-thread-id", buffer, hit);
-	(void)write(fd,buffer,strlen(buffer));
+	if(write(fd, buffer, strlen(buffer))){};
 	(void)sprintf(buffer,"X-stat-thread-count: %d\r\n", thread->http_request);
 	logger(LOG, "X-stat-req-thread-count", buffer, hit);
-	(void)write(fd,buffer,strlen(buffer));
+	if(write(fd, buffer, strlen(buffer))){};
 	(void)sprintf(buffer,"X-stat-thread-html: %d\r\n", thread->html_request);
 	logger(LOG, "X-stat-req-thread-html", buffer, hit);
-	(void)write(fd,buffer,strlen(buffer));
+	if(write(fd, buffer, strlen(buffer))){};
 	(void)sprintf(buffer,"X-stat-thread-image: %d\r\n", thread->img_request);
 	logger(LOG, "X-stat-req-thread-image", buffer, hit);
-	(void)write(fd,buffer,strlen(buffer));
+	if(write(fd, buffer, strlen(buffer))){};
 	//Server Statistics
 	//Thread Arrical Count
 	// printf("X-stat-req-arrival-count: %d\n", arrivalCount);
