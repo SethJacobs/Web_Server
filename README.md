@@ -1,5 +1,5 @@
 # Web_Server
-1)	Seth Jacobs 800293004 Eli Benzaquen 800504053 Binyamin Jachter 
+1)	Seth Jacobs 800293004 Eli Benzaquen 800504053 Binyamin Jachter 800497083
 
 
 2)	Word Divided: We all worked together on zoom that way we all could put in our input and understand how each aspect of the assignment will work. 
