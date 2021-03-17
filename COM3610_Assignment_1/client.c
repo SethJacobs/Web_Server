@@ -74,7 +74,7 @@ void GET(int clientfd, char *path) {
 }
 
 int main(int argc, char **argv){
-    if(argc != 6 && argc != 7){
+    if(argc < 6 && argc > 7){
         fprintf(stderr, "USAGE: ./httpclient <hostname> <port> <threads> <schedalg> <request path> <optional secondary request path>\n");
         return 1;
     }
