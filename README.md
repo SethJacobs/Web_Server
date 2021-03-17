@@ -1,5 +1,5 @@
 # Web_Server
-1)	Seth Jacobs 800293004 Eli Benzaquen 800504053 Binyamin Jachter 800497083
+1)	Seth Jacobs 800293004 Elie Benzaquen 800504053 Binyamin Jachter 800497083
 
 
 2)	Word Divided: We all worked together on zoom that way we all could put in our input and understand how each aspect of the assignment will work. 
@@ -12,3 +12,8 @@ When the server starts it creates all the threads determined by the command line
 
 
 4)	We made the Any call for scheduling the same as FIFO. 
+FIFO vs CONCUR.  When it is FIFO, we make the semaphore equal one and therefore only one thread can run at a time. If it is CONCUR, then the semaphore is equal to the number of threads so they can all run simulteniasly. 
+
+
+5) Testing:
+We ran our server with a get call and looked at the times and each thread overlapped start and finish times. 
