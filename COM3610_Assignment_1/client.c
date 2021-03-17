@@ -68,50 +68,53 @@ int establishConnection(struct addrinfo *info) {
 
 // Send GET request
 void GET(int clientfd, char *path) {
-	char req[1000] = {0};
-	sprintf(req, "GET %s HTTP/1.0\r\n\r\n", path);
-	send(clientfd, req, strlen(req), 0);
+    char req[1000] = {0};
+    sprintf(req, "GET %s HTTP/1.0\r\n\r\n", path);
+    send(clientfd, req, strlen(req), 0);
 }
 
 int main(int argc, char **argv){
-	if(argc != 6 && argc != 7){
-		fprintf(stderr, "USAGE: ./httpclient <hostname> <port> <threads> <schedalg> <request path> <optional secondary request path>\n");
-		return 1;
-	}
-	int threadNum = atoi(argv[3]);
-	if(argv[4] == "FIFO") sem_init(&semaphore, 0, 1);
-	else sem_init(&semaphore, 0, threadNum);
-	
-	threads = calloc(threadNum, sizeof(pthread_t));
-	clientfd = establishConnection(getHostInfo(argv[1], argv[2]));
-	file_name = argv[5];
-	if (clientfd == -1) {
-		fprintf(stderr,
-				"[main:73] Failed to connect to: %s:%s \n",
-				argv[1], argv[2]);
-		return 3;
-	}
-	if(argc == 7) file_name_2 = argv[6];
-	for (int i = 0; i < threadNum; i++)
-	{
-		if(i % 2 == 1 && argc == 7) pthread_create(threads+i, NULL, multithreaded, file_name_2);
-		else pthread_create(threads+i, NULL, multithreaded, file_name);
-	}
-	sem_destroy(&semaphore);
-	return 0;
+    if(argc != 6 && argc != 7){
+        fprintf(stderr, "USAGE: ./httpclient <hostname> <port> <threads> <schedalg> <request path> <optional secondary request path>\n");
+        return 1;
+    }
+    int threadNum = atoi(argv[3]);
+    if(!strcmp(argv[4], "FIFO")) sem_init(&semaphore, 0, 1);
+    else sem_init(&semaphore, 0, threadNum);
+    
+    threads = calloc(threadNum, sizeof(pthread_t));
+    clientfd = establishConnection(getHostInfo(argv[1], argv[2]));
+    file_name = argv[5];
+    if (clientfd == -1) {
+        fprintf(stderr,
+                "[main:73] Failed to connect to: %s:%s \n",
+                argv[1], argv[2]);
+        return 3;
+    }
+    if(argc == 7) file_name_2 = argv[6];
+    for (int i = 0; i < threadNum; i++)
+    {
+        if(i % 2 == 1 && argc == 7) pthread_create(threads+i, NULL, multithreaded, &file_name_2);
+        else pthread_create(threads+i, NULL, multithreaded, &file_name);
+    }
+    sem_destroy(&semaphore);
+    return 0;
 }
 
 void *multithreaded(void *thread) {
-	char buf[BUF_SIZE];
-	// Establish connection with <hostname>:<port>
-	// Send GET request > stdout
-	sem_wait(&semaphore);
-	GET(clientfd, file_name);
-	sem_post(&semaphore);
-	while (recv(clientfd, buf, BUF_SIZE, 0) > 0) {
-		fputs(buf, stdout);
-		memset(buf, 0, BUF_SIZE);
-	}
-	close(clientfd);
-	pthread_exit(0);
+    char buf[BUF_SIZE];
+    // Establish connection with <hostname>:<port>
+    // Send GET request > stdout
+    sem_wait(&semaphore);
+    GET(clientfd, file_name);
+    sem_post(&semaphore);
+    while (recv(clientfd, buf, BUF_SIZE, 0) > 0) {
+        fputs(buf, stdout);
+        memset(buf, 0, BUF_SIZE);
+    }
+    close(clientfd);
+    pthread_exit(0);
 }
+
+
+
