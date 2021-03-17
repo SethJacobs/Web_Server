@@ -18,3 +18,5 @@ FIFO vs CONCUR.  When it is FIFO, we make the semaphore equal one and therefore 
 5) Testing:
 We ran our server with a get call and looked at the times and each thread overlapped start and finish times. 
 We ran mutliple processes of client on our server to make sure our server can handle multiple calls at once, and it was able to run 15 calls at a time without a cap in sight. 
+6) Bugs:
+Client was working however in the receive method it started to get stuck and we were unsure the reason why. 
